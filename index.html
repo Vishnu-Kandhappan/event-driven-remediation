@@ -1,0 +1,759 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Prometheus-Ansible ChatOps Automation · VK</title>
+  <meta name="description" content="Interactive architecture diagram of Prometheus to Ansible automation workflow with a Slack HITL step." />
+  <meta name="author" content="Vishnu Kandhappan" />
+  <meta name="theme-color" content="#07080b" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23ff9f43'/%3E%3Cstop offset='1' stop-color='%232ee6d6'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpolygon points='32,3 57,17.5 57,46.5 32,61 7,46.5 7,17.5' fill='%2307080b' stroke='url(%23g)' stroke-width='4'/%3E%3Ctext x='32' y='41' font-family='Arial,sans-serif' font-weight='800' font-size='22' text-anchor='middle' fill='url(%23g)'%3EVK%3C/text%3E%3C/svg%3E" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  
+  <style>
+    /* ===================== BASE TEMPLATE STYLES ===================== */
+    :root {
+      --bg: #07080b;
+      --bg-2: #0b0d12;
+      --panel: rgba(14, 17, 23, 0.86);
+      --panel-solid: #0e1117;
+      --line: #1c212b;
+      --line-2: #2a3140;
+      --fg: #f3ece2;
+      --fg-2: #c9c2b8;
+      --muted: #8b93a1;
+      --orange: #ff9f43;
+      --orange-2: #ffb86c;
+      --orange-glow: rgba(255, 159, 67, 0.35);
+      --teal: #2ee6d6;
+      --teal-2: #7ff3e9;
+      --teal-glow: rgba(46, 230, 214, 0.30);
+      --red: #ff6b6b;
+      --red-bg: rgba(255, 107, 107, 0.08);
+      --green: #5ee6a0;
+      --purple: #a371f7;
+      --grad: linear-gradient(120deg, var(--orange) 0%, var(--teal) 100%);
+      --radius: 14px;
+      --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      --sans: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+    }
+    
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      font-family: var(--sans);
+      color: var(--fg);
+      background:
+        radial-gradient(900px 500px at 8% -10%, rgba(255, 159, 67, 0.12), transparent 60%),
+        radial-gradient(900px 500px at 100% 0%, rgba(46, 230, 214, 0.10), transparent 60%),
+        var(--bg);
+      background-attachment: fixed;
+      min-height: 100vh;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+    }
+    
+    a { color: var(--teal); text-decoration: none; }
+    a:hover { color: var(--teal-2); text-decoration: underline; }
+    code, .mono { font-family: var(--mono); font-size: 0.86em; }
+    ::selection { background: var(--orange); color: #111; }
+
+    /* ---------- Header ---------- */
+    .site-header {
+      position: sticky; top: 0; z-index: 50;
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      background: rgba(7, 8, 11, 0.78);
+      border-bottom: 1px solid var(--line);
+    }
+    .site-header::after {
+      content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 1px;
+      background: var(--grad); opacity: 0.55;
+    }
+    .header-inner {
+      max-width: 1240px; margin: 0 auto; padding: 12px 20px;
+      display: flex; align-items: center; gap: 16px;
+    }
+    .brand { display: flex; align-items: center; gap: 12px; color: var(--fg); text-decoration: none !important; min-width: 0; }
+    .emblem { width: 44px; height: 44px; flex: none; filter: drop-shadow(0 0 10px var(--orange-glow)); transition: transform .3s; }
+    .brand:hover .emblem { transform: rotate(-8deg) scale(1.05); }
+    .brand-text { display: flex; flex-direction: column; min-width: 0; }
+    .brand-title {
+      font-weight: 800; font-size: 1.08rem; letter-spacing: 0.01em;
+      background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .brand-sub { font-size: 0.74rem; color: var(--muted); letter-spacing: 0.06em; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .header-links { margin-left: auto; display: flex; gap: 8px; flex: none; }
+    .icon-link {
+      display: inline-flex; align-items: center; gap: 7px;
+      height: 36px; padding: 0 12px; border-radius: 10px;
+      border: 1px solid var(--line-2); color: var(--fg-2); font-size: 0.84rem; font-weight: 500;
+      background: rgba(255,255,255,0.02); transition: all .18s;
+    }
+    .icon-link svg { width: 16px; height: 16px; fill: currentColor; flex: none; }
+    .icon-link:hover { color: var(--teal); border-color: var(--teal); text-decoration: none; box-shadow: 0 0 14px var(--teal-glow); }
+    .icon-link.linkedin:hover { color: var(--orange); border-color: var(--orange); box-shadow: 0 0 14px var(--orange-glow); }
+
+    /* ---------- Layout & Buttons ---------- */
+    .page { max-width: 900px; margin: 0 auto; padding: 32px 20px 56px; }
+    .hero { margin-bottom: 32px; }
+    .eyebrow { font-size: 0.74rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--teal); font-weight: 600; }
+    .hero h1 { margin: 6px 0 8px; font-size: clamp(1.6rem, 3.4vw, 2.3rem); font-weight: 800; letter-spacing: -0.01em; line-height: 1.15; }
+    .hero h1 .glow { color: var(--orange); text-shadow: 0 0 22px var(--orange-glow); }
+    .hero p { margin: 0; color: var(--muted); max-width: 760px; font-size: 0.97rem; }
+
+    .card {
+      background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+      box-shadow: 0 10px 40px rgba(0,0,0,0.45);
+      overflow: hidden;
+      display: flex; flex-direction: column;
+    }
+    
+    .btn {
+      height: 38px; padding: 0 16px; border-radius: 9px; font-weight: 600; font-size: 0.86rem;
+      cursor: pointer; white-space: nowrap; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      font-family: var(--sans); transition: transform .12s, box-shadow .18s, background .18s, color .18s, border-color .18s;
+    }
+    .btn-primary { border: none; color: #0b0b0b; background: var(--grad); box-shadow: 0 4px 16px var(--orange-glow); }
+    .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 22px var(--teal-glow); }
+    .btn-primary:active { transform: translateY(0); }
+    .btn-ghost { border: 1px solid var(--line-2); color: var(--fg-2); background: transparent; }
+    .btn-ghost:hover { border-color: var(--teal); color: var(--teal); background: rgba(46, 230, 214, 0.05); }
+    .btn-active { border-color: var(--orange); color: var(--orange); background: rgba(255, 159, 67, 0.08); }
+
+    /* ---------- Diagram Specific CSS ---------- */
+    .phase-card {
+      padding: 24px;
+      background: var(--bg-2);
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      transition: background 0.3s ease;
+    }
+
+    .phase-info {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .phase-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-family: var(--mono);
+      font-size: 0.76rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--teal);
+      font-weight: 600;
+    }
+
+    .phase-badge-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--teal);
+      box-shadow: 0 0 8px var(--teal-glow);
+    }
+
+    .phase-title {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: var(--fg);
+      margin: 0;
+    }
+
+    .phase-desc {
+      font-size: 0.9rem;
+      color: var(--fg-2);
+      margin: 0;
+      line-height: 1.5;
+    }
+
+    .diagram-viewport {
+      position: relative;
+      width: 100%;
+      padding: 40px 20px;
+      background: var(--panel-solid);
+      box-sizing: border-box;
+      display: flex;
+      justify-content: center;
+    }
+
+    .diagram-svg {
+      width: 100%;
+      max-width: 660px;
+      height: auto;
+      display: block;
+      user-select: none;
+    }
+
+    /* SVG Internals */
+    .diag-node {
+      cursor: pointer;
+      transition: opacity 0.3s ease, filter 0.3s ease;
+    }
+
+    .diag-node rect {
+      transition: stroke 0.3s ease, stroke-width 0.3s ease, fill 0.3s ease;
+    }
+
+    .diag-node:hover rect {
+      filter: brightness(1.2);
+    }
+
+    .diag-node text {
+      pointer-events: none;
+      paint-order: fill;
+      stroke: none;
+    }
+
+    .diag-edge {
+      transition: opacity 0.3s ease, stroke 0.3s ease, stroke-width 0.3s ease;
+      pointer-events: none;
+    }
+
+    .diag-pill {
+      transition: opacity 0.3s ease;
+      pointer-events: none;
+    }
+
+    .is-dimmed {
+      opacity: 0.3 !important;
+    }
+
+    .is-active-edge {
+      stroke-dasharray: 4 4 !important;
+      animation: dashFlow 1s linear infinite;
+    }
+
+    @keyframes dashFlow {
+      to { stroke-dashoffset: -16; }
+    }
+
+    .data-packet {
+      fill: var(--teal);
+      filter: drop-shadow(0 0 6px var(--teal-glow));
+      transition: opacity 0.2s ease;
+    }
+
+    .control-deck {
+      padding: 20px 24px;
+      background: var(--bg-2);
+      border-top: 1px solid var(--line);
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .control-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .button-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .step-counter {
+      font-family: var(--mono);
+      font-size: 0.85rem;
+      color: var(--muted);
+      font-weight: 500;
+    }
+
+    .legend-strip {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+      flex-wrap: wrap;
+      padding-top: 16px;
+      border-top: 1px dashed var(--line);
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-family: var(--mono);
+      font-size: 0.78rem;
+      color: var(--muted);
+    }
+
+    .legend-swatch {
+      width: 12px;
+      height: 12px;
+      border-radius: 3px;
+    }
+
+    /* Footer */
+    footer { border-top: 1px solid var(--line); margin-top: 40px; }
+    .footer-inner { max-width: 1240px; margin: 0 auto; padding: 20px; display: flex; gap: 14px; align-items: center; justify-content: space-between; flex-wrap: wrap; font-size: 0.8rem; color: var(--muted); }
+    .footer-inner .links { display: flex; gap: 14px; flex-wrap: wrap; }
+
+    @media (max-width: 640px) {
+      .page { padding: 22px 16px 40px; }
+      .header-inner { padding: 10px 16px; }
+      .icon-link span { display: none; }
+      .icon-link { padding: 0 10px; }
+      .header-links .hide-sm { display: none; }
+      .control-row { flex-direction: column; align-items: flex-start; }
+    }
+  </style>
+</head>
+<body>
+  <!-- ===================== HEADER ===================== -->
+  <header class="site-header">
+    <div class="header-inner">
+      <a class="brand" href="https://vishnu-kandhappan.github.io/" title="Vishnu Kandhappan — Home">
+        <svg class="emblem" viewBox="0 0 64 64" aria-label="VK emblem" role="img">
+          <defs>
+            <linearGradient id="vkGrad" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stop-color="#ff9f43" />
+              <stop offset="1" stop-color="#2ee6d6" />
+            </linearGradient>
+          </defs>
+          <polygon points="32,3 57,17.5 57,46.5 32,61 7,46.5 7,17.5" fill="#07080b" stroke="url(#vkGrad)" stroke-width="3.5" stroke-linejoin="round" />
+          <polygon points="32,10 51,21 51,43 32,54 13,43 13,21" fill="none" stroke="url(#vkGrad)" stroke-width="0.8" opacity="0.45" />
+          <text x="32" y="40.5" font-family="Inter, Arial, sans-serif" font-weight="800" font-size="20" text-anchor="middle" fill="url(#vkGrad)" letter-spacing="0.5">VK</text>
+        </svg>
+        <span class="brand-text">
+          <span class="brand-title">Interactive Architectures</span>
+          <span class="brand-sub">by Vishnu Kandhappan · AIOps &amp; Observability</span>
+        </span>
+      </a>
+      <nav class="header-links" aria-label="Profile links">
+        <a class="icon-link linkedin" href="https://www.linkedin.com/in/vishnu-k-b6632169" target="_blank" rel="noopener" title="LinkedIn">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.45 20.45h-3.56v-5.57c0-1.33-.02-3.04-1.85-3.04-1.85 0-2.14 1.45-2.14 2.94v5.67H9.35V9h3.41v1.56h.05c.48-.9 1.64-1.85 3.37-1.85 3.6 0 4.27 2.37 4.27 5.46v6.28zM5.34 7.43a2.06 2.06 0 1 1 0-4.13 2.06 2.06 0 0 1 0 4.13zM7.12 20.45H3.56V9h3.56v11.45zM22.22 0H1.77C.79 0 0 .77 0 1.73v20.54C0 23.23.79 24 1.77 24h20.45c.98 0 1.78-.77 1.78-1.73V1.73C24 .77 23.2 0 22.22 0z"/></svg>
+          <span>LinkedIn</span>
+        </a>
+        <a class="icon-link hide-sm" href="https://github.com/Vishnu-Kandhappan" target="_blank" rel="noopener" title="GitHub">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 .3a12 12 0 0 0-3.8 23.38c.6.12.83-.26.83-.57L9 21.07c-3.34.72-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.08-.74.09-.73.09-.73 1.2.09 1.83 1.24 1.83 1.24 1.07 1.83 2.8 1.3 3.49 1 .1-.78.42-1.31.76-1.61-2.67-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.14-.3-.54-1.52.1-3.18 0 0 1-.32 3.3 1.23a11.5 11.5 0 0 1 6 0c2.28-1.55 3.29-1.23 3.29-1.23.64 1.66.24 2.88.12 3.18a4.65 4.65 0 0 1 1.23 3.22c0 4.61-2.8 5.63-5.48 5.92.42.36.81 1.1.81 2.22l-.01 3.29c0 .31.2.69.82.57A12 12 0 0 0 12 .3"/></svg>
+          <span>GitHub</span>
+        </a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- ===================== MAIN CONTENT ===================== -->
+  <main class="page">
+    <section class="hero">
+      <div class="eyebrow">Interactive Workflow Diagram</div>
+      <h1><span class="glow">Prometheus</span> to Ansible ChatOps</h1>
+      <p>Closed-loop event remediation architecture integrating Prometheus alerting, Kafka streaming, Ansible Automation Controller, and interactive Slack callbacks.</p>
+    </section>
+
+    <!-- Interactive Widget Card -->
+    <div class="card">
+      
+      <!-- Phase State Banner -->
+      <div class="phase-card" id="phaseCard">
+        <div class="phase-info">
+          <div class="phase-badge">
+            <span class="phase-badge-dot"></span>
+            <span id="phaseBadgeText">Phase 1 of 5</span>
+          </div>
+          <h3 class="phase-title" id="phaseTitle">Event Ingestion &amp; Queuing</h3>
+          <p class="phase-desc" id="phaseDesc">Prometheus Alertmanager detects an anomaly, deduplicates the alarm, and publishes a structured event payload to the Kafka Event Bus.</p>
+        </div>
+      </div>
+
+      <!-- SVG Architecture Canvas -->
+      <div class="diagram-viewport">
+        <svg class="diagram-svg" viewBox="0 0 680 400" preserveAspectRatio="xMidYMid meet" aria-label="Closed-Loop Event Automation Workflow">
+          <defs>
+            <!-- Inactive Marker -->
+            <marker id="vk-caret" viewBox="0 0 10 10" refX="7.5" refY="5"
+                    markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" orient="auto">
+              <path d="M 3 1.2 L 7.5 5 L 3 8.8" fill="none" stroke="var(--line-2)"
+                    stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+            </marker>
+
+            <!-- Active Marker -->
+            <marker id="vk-caret-active" viewBox="0 0 10 10" refX="7.5" refY="5"
+                    markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" orient="auto">
+              <path d="M 3 1.2 L 7.5 5 L 3 8.8" fill="none" stroke="var(--teal)"
+                    stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+            </marker>
+          </defs>
+
+          <!-- CONNECTORS / EDGES -->
+          <path id="edge-1" class="diag-edge" d="M 160 75 L 270 75" fill="none"
+                stroke="var(--line-2)" stroke-width="1.3" stroke-linecap="round" stroke-dasharray="0 4"
+                marker-end="url(#vk-caret)" />
+
+          <path id="edge-2" class="diag-edge" d="M 400 75 L 565 75 Q 580 75 580 90 L 580 150" fill="none"
+                stroke="var(--line-2)" stroke-width="1.3" stroke-linecap="round" stroke-dasharray="0 4"
+                marker-end="url(#vk-caret)" />
+
+          <path id="edge-3a" class="diag-edge" d="M 580 230 L 580 270" fill="none"
+                stroke="var(--line-2)" stroke-width="1.3" stroke-linecap="round" stroke-dasharray="0 4"
+                marker-end="url(#vk-caret)" />
+
+          <path id="edge-3b" class="diag-edge" d="M 520 195 L 355 195 Q 340 195 340 210 L 340 270" fill="none"
+                stroke="var(--line-2)" stroke-width="1.3" stroke-linecap="round" stroke-dasharray="0 4"
+                marker-end="url(#vk-caret)" />
+
+          <path id="edge-4" class="diag-edge" d="M 280 315 L 170 315" fill="none"
+                stroke="var(--line-2)" stroke-width="1.3" stroke-linecap="round" stroke-dasharray="0 4"
+                marker-end="url(#vk-caret)" />
+
+          <path id="edge-5" class="diag-edge" d="M 100 280 L 100 110 Q 100 95 115 95 L 270 95" fill="none"
+                stroke="var(--line-2)" stroke-width="1.3" stroke-linecap="round" stroke-dasharray="0 4"
+                marker-end="url(#vk-caret)" />
+
+          <!-- EDGE LABELS (PILLS) -->
+          <g id="pill-1" class="diag-pill">
+            <rect x="180" y="65" width="70" height="20" rx="6" fill="var(--bg-2)" stroke="var(--line)" stroke-width="1"/>
+            <text x="215" y="79" fill="var(--muted)" font-size="11" font-weight="500" font-family="var(--mono)" text-anchor="middle">1. Alert</text>
+          </g>
+
+          <g id="pill-2" class="diag-pill">
+            <rect x="445" y="65" width="70" height="20" rx="6" fill="var(--bg-2)" stroke="var(--line)" stroke-width="1"/>
+            <text x="480" y="79" fill="var(--muted)" font-size="11" font-weight="500" font-family="var(--mono)" text-anchor="middle">2. Trigger</text>
+          </g>
+
+          <g id="pill-3a" class="diag-pill">
+            <rect x="545" y="240" width="70" height="20" rx="6" fill="var(--bg-2)" stroke="var(--line)" stroke-width="1"/>
+            <text x="580" y="254" fill="var(--muted)" font-size="11" font-weight="500" font-family="var(--mono)" text-anchor="middle">3a. Archive</text>
+          </g>
+
+          <g id="pill-3b" class="diag-pill">
+            <rect x="395" y="185" width="70" height="20" rx="6" fill="var(--bg-2)" stroke="var(--line)" stroke-width="1"/>
+            <text x="430" y="199" fill="var(--muted)" font-size="11" font-weight="500" font-family="var(--mono)" text-anchor="middle">3b. Notify</text>
+          </g>
+
+          <g id="pill-4" class="diag-pill">
+            <rect x="190" y="305" width="70" height="20" rx="6" fill="var(--bg-2)" stroke="var(--line)" stroke-width="1"/>
+            <text x="225" y="319" fill="var(--muted)" font-size="11" font-weight="500" font-family="var(--mono)" text-anchor="middle">4. Action</text>
+          </g>
+
+          <g id="pill-5" class="diag-pill">
+            <rect x="65" y="185" width="70" height="20" rx="6" fill="var(--bg-2)" stroke="var(--line)" stroke-width="1"/>
+            <text x="100" y="199" fill="var(--muted)" font-size="11" font-weight="500" font-family="var(--mono)" text-anchor="middle">5. Webhook</text>
+          </g>
+
+          <!-- NODES -->
+          <!-- Node 1: Prometheus -->
+          <g id="node-prometheus" class="diag-node" onclick="selectPhaseByNode('prometheus')">
+            <rect x="40" y="40" width="120" height="70" rx="16" fill="var(--bg-2)" stroke="var(--teal)" stroke-width="1.5"/>
+            <text x="100" y="70" text-anchor="middle" font-family="var(--sans)" font-size="14" font-weight="600" fill="var(--fg)">Prometheus</text>
+            <text x="100" y="85" text-anchor="middle" font-family="var(--mono)" font-size="11" fill="var(--muted)">Alertmanager</text>
+          </g>
+
+          <!-- Node 2: Kafka -->
+          <g id="node-kafka" class="diag-node" onclick="selectPhaseByNode('kafka')">
+            <rect x="280" y="40" width="120" height="70" rx="16" fill="var(--bg-2)" stroke="var(--orange)" stroke-width="1.5"/>
+            <text x="340" y="70" text-anchor="middle" font-family="var(--sans)" font-size="14" font-weight="600" fill="var(--fg)">Kafka</text>
+            <text x="340" y="85" text-anchor="middle" font-family="var(--mono)" font-size="11" fill="var(--muted)">Event Bus</text>
+          </g>
+
+          <!-- Node 3: Ansible -->
+          <g id="node-ansible" class="diag-node" onclick="selectPhaseByNode('ansible')">
+            <rect x="520" y="160" width="120" height="70" rx="16" fill="var(--bg-2)" stroke="var(--red)" stroke-width="1.5"/>
+            <text x="580" y="190" text-anchor="middle" font-family="var(--sans)" font-size="14" font-weight="600" fill="var(--fg)">Ansible</text>
+            <text x="580" y="205" text-anchor="middle" font-family="var(--mono)" font-size="11" fill="var(--muted)">EDA / Controller</text>
+          </g>
+
+          <!-- Node 4: Elasticsearch -->
+          <g id="node-elastic" class="diag-node" onclick="selectPhaseByNode('elastic')">
+            <rect x="520" y="280" width="120" height="70" rx="16" fill="var(--bg-2)" stroke="var(--green)" stroke-width="1.5"/>
+            <text x="580" y="310" text-anchor="middle" font-family="var(--sans)" font-size="14" font-weight="600" fill="var(--fg)">Elasticsearch</text>
+            <text x="580" y="325" text-anchor="middle" font-family="var(--mono)" font-size="11" fill="var(--muted)">Observability</text>
+          </g>
+
+          <!-- Node 5: Slack -->
+          <g id="node-slack" class="diag-node" onclick="selectPhaseByNode('slack')">
+            <rect x="280" y="280" width="120" height="70" rx="16" fill="var(--bg-2)" stroke="var(--purple)" stroke-width="1.5"/>
+            <text x="340" y="310" text-anchor="middle" font-family="var(--sans)" font-size="14" font-weight="600" fill="var(--fg)">Slack</text>
+            <text x="340" y="325" text-anchor="middle" font-family="var(--mono)" font-size="11" fill="var(--muted)">ChatOps / HITL</text>
+          </g>
+
+          <!-- Node 6: API Gateway -->
+          <g id="node-apigw" class="diag-node" onclick="selectPhaseByNode('apigw')">
+            <rect x="40" y="280" width="120" height="70" rx="16" fill="var(--bg-2)" stroke="var(--teal-2)" stroke-width="1.5"/>
+            <text x="100" y="310" text-anchor="middle" font-family="var(--sans)" font-size="14" font-weight="600" fill="var(--fg)">API Gateway</text>
+            <text x="100" y="325" text-anchor="middle" font-family="var(--mono)" font-size="11" fill="var(--muted)">Webhook Receiver</text>
+          </g>
+
+          <!-- Animated Data Packet -->
+          <circle id="animPacket" class="data-packet" r="5" cx="-20" cy="-20" opacity="0"/>
+        </svg>
+      </div>
+
+      <!-- Control Deck -->
+      <div class="control-deck">
+        <div class="control-row">
+          <div class="button-group">
+            <button class="btn btn-ghost" id="btnPrev" onclick="changeStep(-1)">Previous</button>
+            <button class="btn btn-primary" id="btnNext" onclick="changeStep(1)">Next Step</button>
+            <button class="btn btn-ghost" id="btnAuto" onclick="toggleAutoPlay()">Auto Play</button>
+          </div>
+          <span class="step-counter" id="stepCounter">Phase 1 / 5</span>
+        </div>
+
+        <!-- System Legend -->
+        <div class="legend-strip">
+          <div class="legend-item"><span class="legend-swatch" style="background: var(--teal);"></span> Prometheus</div>
+          <div class="legend-item"><span class="legend-swatch" style="background: var(--orange);"></span> Kafka</div>
+          <div class="legend-item"><span class="legend-swatch" style="background: var(--red);"></span> Ansible</div>
+          <div class="legend-item"><span class="legend-swatch" style="background: var(--green);"></span> Elasticsearch</div>
+          <div class="legend-item"><span class="legend-swatch" style="background: var(--purple);"></span> Slack</div>
+          <div class="legend-item"><span class="legend-swatch" style="background: var(--teal-2);"></span> API Gateway</div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <div class="footer-inner">
+      <span>Built by <a href="https://vishnu-kandhappan.github.io/">Vishnu Kandhappan</a> · Interactive Technical Architecture</span>
+      <span class="links">
+        <a href="https://www.linkedin.com/in/vishnu-k-b6632169" target="_blank" rel="noopener">LinkedIn</a>
+        <a href="https://github.com/Vishnu-Kandhappan" target="_blank" rel="noopener">GitHub</a>
+        <a href="https://medium.com/@vishnukandhappan_18621" target="_blank" rel="noopener">Medium</a>
+      </span>
+    </div>
+  </footer>
+
+  <script>
+    // Centralized Workflow Architecture Data
+    const PHASES = [
+      {
+        id: 1,
+        badge: "Phase 1 of 5",
+        title: "Event Ingestion & Queuing",
+        desc: "Prometheus Alertmanager detects an anomaly, deduplicates the alarm, and publishes a structured event payload to the Kafka Event Bus.",
+        activeNodes: ["node-prometheus", "node-kafka"],
+        activeEdges: ["edge-1"],
+        activePills: ["pill-1"],
+        packetEdge: "edge-1"
+      },
+      {
+        id: 2,
+        badge: "Phase 2 of 5",
+        title: "Event-Driven Automation Trigger",
+        desc: "Ansible Event-Driven Automation (EDA) consumes the Kafka topic, matches the event signature, and triggers a diagnostic playbook.",
+        activeNodes: ["node-kafka", "node-ansible"],
+        activeEdges: ["edge-2"],
+        activePills: ["pill-2"],
+        packetEdge: "edge-2"
+      },
+      {
+        id: 3,
+        badge: "Phase 3 of 5",
+        title: "Telemetry & ChatOps Integration",
+        desc: "Ansible archives execution traces to Elasticsearch for auditing, and formats a rich interactive Block Kit message sent to Slack.",
+        activeNodes: ["node-ansible", "node-elastic", "node-slack"],
+        activeEdges: ["edge-3a", "edge-3b"],
+        activePills: ["pill-3a", "pill-3b"],
+        packetEdge: "edge-3b"
+      },
+      {
+        id: 4,
+        badge: "Phase 4 of 5",
+        title: "Human-In-The-Loop Review",
+        desc: "The engineering team reviews the diagnostics in Slack. An operator clicks 'Approve Remediation', sending an interactive payload to the API Gateway.",
+        activeNodes: ["node-slack", "node-apigw"],
+        activeEdges: ["edge-4"],
+        activePills: ["pill-4"],
+        packetEdge: "edge-4"
+      },
+      {
+        id: 5,
+        badge: "Phase 5 of 5",
+        title: "Callback & Remediation Execution",
+        desc: "The API Gateway validates the Slack signature and drops a callback event onto Kafka. Ansible consumes this to execute the final fix playbook.",
+        activeNodes: ["node-apigw", "node-kafka"],
+        activeEdges: ["edge-5"],
+        activePills: ["pill-5"],
+        packetEdge: "edge-5"
+      }
+    ];
+
+    const ALL_NODES = ["node-prometheus", "node-kafka", "node-ansible", "node-elastic", "node-slack", "node-apigw"];
+    const ALL_EDGES = ["edge-1", "edge-2", "edge-3a", "edge-3b", "edge-4", "edge-5"];
+    const ALL_PILLS = ["pill-1", "pill-2", "pill-3a", "pill-3b", "pill-4", "pill-5"];
+
+    const state = {
+      currentStep: 0,
+      autoPlay: false,
+      autoPlayTimer: null,
+      animRafId: null
+    };
+
+    function updateViz() {
+      const phase = PHASES[state.currentStep];
+
+      // Update Text Readouts
+      document.getElementById('phaseBadgeText').textContent = phase.badge;
+      document.getElementById('phaseTitle').textContent = phase.title;
+      document.getElementById('phaseDesc').textContent = phase.desc;
+      document.getElementById('stepCounter').textContent = `Phase ${phase.id} / ${PHASES.length}`;
+
+      // Highlight/Dim SVG Nodes
+      ALL_NODES.forEach(nodeId => {
+        const el = document.getElementById(nodeId);
+        if (!el) return;
+        const rect = el.querySelector('rect');
+        if (phase.activeNodes.includes(nodeId)) {
+          el.classList.remove('is-dimmed');
+          if (rect) {
+            rect.setAttribute('stroke-width', '2.5');
+            rect.setAttribute('filter', 'drop-shadow(0 0 8px rgba(46,230,214,0.15))');
+          }
+        } else {
+          el.classList.add('is-dimmed');
+          if (rect) {
+            rect.setAttribute('stroke-width', '1.5');
+            rect.removeAttribute('filter');
+          }
+        }
+      });
+
+      // Highlight/Dim Edges & Markers
+      ALL_EDGES.forEach(edgeId => {
+        const el = document.getElementById(edgeId);
+        if (!el) return;
+        if (phase.activeEdges.includes(edgeId)) {
+          el.classList.remove('is-dimmed');
+          el.classList.add('is-active-edge');
+          el.setAttribute('stroke', 'var(--teal)');
+          el.setAttribute('stroke-width', '2');
+          el.setAttribute('marker-end', 'url(#vk-caret-active)');
+        } else {
+          el.classList.add('is-dimmed');
+          el.classList.remove('is-active-edge');
+          el.setAttribute('stroke', 'var(--line-2)');
+          el.setAttribute('stroke-width', '1.3');
+          el.setAttribute('marker-end', 'url(#vk-caret)');
+        }
+      });
+
+      // Highlight/Dim Edge Pills
+      ALL_PILLS.forEach(pillId => {
+        const el = document.getElementById(pillId);
+        if (!el) return;
+        if (phase.activePills.includes(pillId)) {
+          el.classList.remove('is-dimmed');
+          const t = el.querySelector('text');
+          if (t) t.setAttribute('fill', 'var(--fg)');
+        } else {
+          el.classList.add('is-dimmed');
+          const t = el.querySelector('text');
+          if (t) t.setAttribute('fill', 'var(--muted)');
+        }
+      });
+
+      // Trigger Data Packet Flow Animation
+      animatePacket(phase.packetEdge);
+    }
+
+    // Packet Motion along Active Edge Path
+    function animatePacket(edgeId) {
+      if (state.animRafId) cancelAnimationFrame(state.animRafId);
+
+      const packet = document.getElementById('animPacket');
+      const edgePath = document.getElementById(edgeId);
+      if (!packet || !edgePath) return;
+
+      let pathLen = 0;
+      try { pathLen = edgePath.getTotalLength(); } 
+      catch (e) { packet.setAttribute('opacity', '0'); return; }
+
+      packet.setAttribute('opacity', '1');
+      let startTime = null;
+      const duration = 1200; // ms
+
+      function step(timestamp) {
+        if (!startTime) startTime = timestamp;
+        const progress = (timestamp - startTime) / duration;
+
+        if (progress <= 1) {
+          const point = edgePath.getPointAtLength(progress * pathLen);
+          packet.setAttribute('cx', point.x);
+          packet.setAttribute('cy', point.y);
+          state.animRafId = requestAnimationFrame(step);
+        } else {
+          startTime = timestamp;
+          state.animRafId = requestAnimationFrame(step);
+        }
+      }
+
+      state.animRafId = requestAnimationFrame(step);
+    }
+
+    // Interactive Step Controls
+    function changeStep(delta) {
+      if (state.autoPlay) stopAutoPlay();
+      state.currentStep = (state.currentStep + delta + PHASES.length) % PHASES.length;
+      updateViz();
+    }
+
+    function selectPhaseByNode(nodeType) {
+      if (state.autoPlay) stopAutoPlay();
+      // Map node click to appropriate workflow phase
+      const nodePhaseMap = {
+        'prometheus': 0,
+        'kafka': 1,
+        'ansible': 2,
+        'elastic': 2,
+        'slack': 3,
+        'apigw': 4
+      };
+      if (nodePhaseMap[nodeType] !== undefined) {
+        state.currentStep = nodePhaseMap[nodeType];
+        updateViz();
+      }
+    }
+
+    function toggleAutoPlay() {
+      if (state.autoPlay) stopAutoPlay();
+      else startAutoPlay();
+    }
+
+    function startAutoPlay() {
+      state.autoPlay = true;
+      const btn = document.getElementById('btnAuto');
+      if (btn) {
+        btn.textContent = 'Pause Auto';
+        btn.classList.remove('btn-ghost');
+        btn.classList.add('btn-active');
+      }
+      state.autoPlayTimer = setInterval(() => {
+        state.currentStep = (state.currentStep + 1) % PHASES.length;
+        updateViz();
+      }, 3500);
+    }
+
+    function stopAutoPlay() {
+      state.autoPlay = false;
+      if (state.autoPlayTimer) clearInterval(state.autoPlayTimer);
+      const btn = document.getElementById('btnAuto');
+      if (btn) {
+        btn.textContent = 'Auto Play';
+        btn.classList.remove('btn-active');
+        btn.classList.add('btn-ghost');
+      }
+    }
+
+    // Initialize Diagram
+    window.addEventListener('DOMContentLoaded', () => {
+      updateViz();
+    });
+  </script>
+</body>
+</html>
